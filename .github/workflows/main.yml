@@ -8,48 +8,29 @@ on:
 jobs:
   sync-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout current repository
         uses: actions/checkout@v4
 
       - name: Clone source repository
-        run: |
-          git clone https://github.com/tytestelle/witv.git /tmp/witv-source
+        run: git clone https://github.com/tytestelle/witv.git /tmp/witv-source
 
       - name: Copy all files from source repository
         run: |
           rsync -av --exclude='.git' /tmp/witv-source/ ./
           chmod +x deploy_ku9.sh
 
-      # ⭐ 运行脚本，即使构建失败也继续
       - name: Run deploy_ku9.sh (ignore build errors)
-        run: |
-          ./deploy_ku9.sh || echo "⚠️ 构建失败，但配置文件可能已生成，继续执行..."
-        continue-on-error: true   # 允许此步骤失败而不终止整个 Job
+        run: ./deploy_ku9.sh || echo "⚠️ 构建失败，但配置已生成"
+        continue-on-error: true
 
-      # ⭐ 始终执行复制配置文件的步骤（无论上一步是否失败）
       - name: Copy config files to res folder
-        if: always()   # 确保此步骤总是运行
+        if: always()
         run: |
           mkdir -p res
           if [ -d "./config" ] && [ "$(ls -A ./config)" ]; then
             cp -r ./config/* ./res/
             echo "✅ 配置文件已复制到 res 文件夹"
           else
-            echo "⚠️ config 目录不存在或为空，请检查脚本是否正常生成"
-          fi
-
-      # 可选：提交变更
-      - name: Commit and push changes
-        if: always()   # 即使构建失败也可提交（如有变更）
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add .
-          if git diff --staged --quiet; then
-            echo "没有变更需要提交"
-          else
-            git commit -m "chore: sync from tytestelle/witv and generate configs"
-            git push
+            echo "⚠️ config 目录不存在或为空"
           fi
