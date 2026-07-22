@@ -8,12 +8,14 @@ on:
 jobs:
   sync-and-deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout current repository
         uses: actions/checkout@v4
 
       - name: Clone source repository
-        run: git clone https://github.com/tytestelle/witv.git /tmp/witv-source
+        run: |
+          git clone https://github.com/tytestelle/witv.git /tmp/witv-source
 
       - name: Copy all files from source repository
         run: |
@@ -21,7 +23,8 @@ jobs:
           chmod +x deploy_ku9.sh
 
       - name: Run deploy_ku9.sh (ignore build errors)
-        run: ./deploy_ku9.sh || echo "⚠️ 构建失败，但配置已生成"
+        run: |
+          ./deploy_ku9.sh || echo "⚠️ 构建失败，但配置文件可能已生成"
         continue-on-error: true
 
       - name: Copy config files to res folder
@@ -33,4 +36,20 @@ jobs:
             echo "✅ 配置文件已复制到 res 文件夹"
           else
             echo "⚠️ config 目录不存在或为空"
+          fi
+
+      - name: Commit and push changes
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "没有变更需要提交"
+          else
+            git commit -m "chore: sync from tytestelle/witv and generate configs"
+            # 如果使用 GITHUB_TOKEN 且开启了写入权限，则用下面这行：
+            git push
+            # 如果使用 PAT，则替换为：
+            # git push https://x-access-token:${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
           fi
